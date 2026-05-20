@@ -2,12 +2,25 @@
 
 > Daily internet-time control for the routers families already own.
 
-A portfolio project that ships **two ways to enforce a per-child daily online-time budget** without replacing the home router, enrolling every device, or learning network jargon:
+A network-layer parental control system that enforces **per-child daily internet-time budgets** on the home router families already own — no router replacement, no device-by-device enrollment, no MAC addresses in the parent-facing UI.
+
+Ships in two delivery modes:
 
 1. **Web App** — a self-hosted parental-control console that drives the router directly from a server.
 2. **ESP32 Companion Device + Mobile App** — an affordable hardware "Minion" plus an iOS-style app, for households that own a router but no server.
 
-Both deliver the same parent-facing experience: pick a kid's devices, set a daily time budget, and let the system auto-block at the network layer when the budget is spent.
+Both modes share the same feature surface and the same vendor abstraction underneath.
+
+## Features
+
+- **Per-child daily time budget** — "2 hours/day on weekdays" holds across every device assigned to the kid.
+- **Time-window scheduling** — combine multiple allowed windows per day (e.g. 15:30–18:00 + 19:00–20:30); outside the window is blocked regardless of remaining budget.
+- **Multiple rules per group** — stack a stricter weekday rule and a relaxed weekend rule on the same child.
+- **Network-layer enforcement** — blocks pushed into the router's MAC filter list. Can't be bypassed by reinstalling an app, borrowing a sibling's device, or factory-resetting an iPad.
+- **Auto-block / auto-reset** — counters freeze when blocked; at midnight everything resets and auto-blocks lift on their own.
+- **LAN-wide device auto-discovery** — every client the router has ever seen, identified and labeled per child once.
+- **Multi-vendor router abstraction** — single `RouterClient` interface, vendor adapters underneath. UniFi + Asus working today; five more in development.
+- **Manual override** — parent can block/unblock any device at any time, distinct from the auto-block state.
 
 <p align="center">
   <img src="docs/device/minion1.jpg" alt="The Minion — ESP32-C6 companion device" width="360" />
@@ -30,6 +43,65 @@ The existing options each fall short on at least one axis:
 | **Replace the home router** | Wi-Fi quality regression. Family-wide disruption. |
 
 There is a clear gap: **a tool that takes five minutes to set up, enforces a daily time budget at the network layer, and leaves the existing home router in place.** NetGuardian targets that gap from two angles.
+
+---
+
+## Architecture
+
+The two delivery modes share no backend — they are independent products with overlapping UX. The vendor abstraction (`RouterClient` interface + per-vendor adapters) has the same shape on both sides, so a new router type ports across with one adapter implementation.
+
+### Mode A — Web app (server-deployed)
+
+```
+   Browser (parent)
+        │
+        │  HTTPS
+        ▼
+ ┌──────────────────────────────────────┐
+ │  Next.js console  +  Node worker     │
+ │  ├─ Auth, groups, rules, identities  │
+ │  ├─ Cron poller (configurable)       │
+ │  ├─ Policy engine (budget + windows) │
+ │  └─ SQLite persistence               │
+ └──────────────┬───────────────────────┘
+                │  RouterClient  (vendor-agnostic)
+                ▼
+        ┌──────────────────┐
+        │  Vendor adapter  │   UniFi · Asus · …
+        └────────┬─────────┘
+                 │  vendor admin API
+                 ▼
+          Home router  ──►  MAC filter / DHCP / association table
+                 │
+                 ▼
+            Client devices
+```
+
+### Mode B — ESP32 companion + mobile app
+
+```
+   Mobile app  (iOS / Android, Next.js + Capacitor)
+        │
+        │  BLE  (pairing, telemetry, fallback when off-Wi-Fi)
+        │  HTTP / WebSocket  (bulk data, control on Wi-Fi)
+        ▼
+ ┌──────────────────────────────────────────┐
+ │  Minion — ESP32-C6  (ESP-IDF / FreeRTOS) │
+ │  ├─ Wi-Fi + BLE provisioning             │
+ │  ├─ CmdKey command interpreter           │
+ │  ├─ Polling + accumulation engine        │
+ │  ├─ Policy engine (budget + windows)     │
+ │  └─ NVS-flash persistence                │
+ └──────────────────┬───────────────────────┘
+                    │  RouterClient  (same shape as Mode A)
+                    ▼
+          Home router  ──►  MAC filter
+                    │
+                    ▼
+              Client devices
+```
+
+The mobile app and the firmware form a contracted pair: a single shared spec (`shared/protocol.md` in the coordinator workspace) governs BLE characteristics, HTTP endpoints, and message formats. Any wire-level change updates the contract first.
 
 ---
 
@@ -125,4 +197,4 @@ code/
 
 ## Status
 
-Working prototype across all four codebases. UI shown above is from the running web app and iOS app; the Minion photo is real hardware.
+Working prototype across all three codebases. UI shown above is from the running web app and iOS app; the Minion photo is real hardware. This repo is the public landing page for the project — the three product codebases are kept private and referenced here via symlinks.
