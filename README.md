@@ -2,25 +2,25 @@
 
 > Daily internet-time control for the routers families already own.
 
-A network-layer parental control system that enforces **per-child daily internet-time budgets** on the home router families already own — no router replacement, no device-by-device enrollment, no MAC addresses in the parent-facing UI.
+A network-layer parental control system that enforces **per-child daily internet-time budgets** on the home router families already own. It needs no router replacement and no device-by-device enrollment, and the parent-facing UI never shows a MAC address.
 
-Ships in two delivery modes:
+It comes in two delivery modes:
 
-1. **Web App** — a self-hosted parental-control console that drives the router directly from a server.
-2. **ESP32 Companion Device + Mobile App** — an affordable hardware "Minion" plus an iOS-style app, for households that own a router but no server.
+1. **Web app**: a self-hosted parental-control console that drives the router directly from a server.
+2. **ESP32 companion device + mobile app**: a low-cost board (the "Minion") plus a phone app, for households that own a router but no server.
 
 Both modes share the same feature surface and the same vendor abstraction underneath.
 
 ## Features
 
-- **Per-child daily time budget** — "2 hours/day on weekdays" holds across every device assigned to the kid.
-- **Time-window scheduling** — combine multiple allowed windows per day (e.g. 15:30–18:00 + 19:00–20:30); outside the window is blocked regardless of remaining budget.
-- **Multiple rules per group** — stack a stricter weekday rule and a relaxed weekend rule on the same child.
-- **Network-layer enforcement** — blocks pushed into the router's MAC filter list. Can't be bypassed by reinstalling an app, borrowing a sibling's device, or factory-resetting an iPad.
-- **Auto-block / auto-reset** — counters freeze when blocked; at midnight everything resets and auto-blocks lift on their own.
-- **LAN-wide device auto-discovery** — every client the router has ever seen, identified and labeled per child once.
-- **Multi-vendor router abstraction** — single `RouterClient` interface, vendor adapters underneath. UniFi + Asus working today; five more in development.
-- **Manual override** — parent can block/unblock any device at any time, distinct from the auto-block state.
+- **Per-child daily time budget**: "2 hours/day on weekdays" holds across every device assigned to the kid.
+- **Time-window scheduling**: combine multiple allowed windows per day (e.g. 15:30–18:00 + 19:00–20:30); outside the window is blocked regardless of remaining budget.
+- **Multiple rules per group**: stack a stricter weekday rule and a relaxed weekend rule on the same child.
+- **Network-layer enforcement**: blocks are pushed into the router's MAC filter list. Can't be bypassed by reinstalling an app, borrowing a sibling's device, or factory-resetting an iPad.
+- **Auto-block / auto-reset**: counters freeze when blocked; at midnight everything resets and auto-blocks lift on their own.
+- **LAN-wide device auto-discovery**: every client the router has ever seen, identified and labeled per child once.
+- **Multi-vendor router abstraction**: a single `RouterClient` interface, vendor adapters underneath. UniFi + Asus working today; five more in development.
+- **Manual override**: the parent can block/unblock any device at any time, distinct from the auto-block state.
 
 <p align="center">
   <img src="docs/device/minion1.jpg" alt="The Minion — ESP32-C6 companion device" width="360" />
@@ -31,9 +31,9 @@ Both modes share the same feature surface and the same vendor abstraction undern
 
 ## Why this exists
 
-School-age kids spend more time online than any prior generation, and most can't reliably regulate how long they stay on. Parents don't want to ban devices — they want a **daily time budget that holds**, configured once.
+School-age kids spend a lot of time online, and many find it hard to stop on their own. Most parents don't want to ban devices; they want a daily time budget that holds, configured once.
 
-The existing options each fall short on at least one axis:
+The existing options each fall short somewhere:
 
 | Approach | Why it falls short for most families |
 |---|---|
@@ -42,13 +42,13 @@ The existing options each fall short on at least one axis:
 | **Specialty network boxes** (Firewalla, Gryphon, Circle) | Expensive. Steep setup. Often requires replacing the router. |
 | **Replace the home router** | Wi-Fi quality regression. Family-wide disruption. |
 
-There is a clear gap: **a tool that takes five minutes to set up, enforces a daily time budget at the network layer, and leaves the existing home router in place.** NetGuardian targets that gap from two angles.
+What's missing is a tool that is quick to set up, enforces a daily time budget at the network layer, and leaves the existing home router in place. NetGuardian tries to fill that gap in both delivery modes.
 
 ---
 
 ## Architecture
 
-The two delivery modes share no backend — they are independent products with overlapping UX. The vendor abstraction (`RouterClient` interface + per-vendor adapters) has the same shape on both sides, so a new router type ports across with one adapter implementation.
+The two delivery modes share no backend; they are independent products with overlapping UX. The vendor abstraction (`RouterClient` interface + per-vendor adapters) has the same shape on both sides, so a new router type ports across with one adapter implementation.
 
 ### Mode A — Web app (server-deployed)
 
@@ -123,12 +123,12 @@ A browser-based parent console. Runs on any always-on machine (mini-PC, NAS, hom
 </table>
 
 - Dark-mode console for setting groups, rules, and time windows.
-- Two rules can stack per group — e.g. stricter weekdays, relaxed weekends.
+- Two rules can stack per group (e.g. stricter weekdays, relaxed weekends).
 - Identities tab consolidates every device the router has seen, with block/unblock per-MAC.
 
 ### Mode B — ESP32 Companion + Mobile App
 
-For the majority of households that own a router but no server. The Minion is a thumb-sized ESP32-C6 board that joins the home Wi-Fi over Bluetooth pairing, then runs the same control loop on-device.
+For households that own a router but no server. The Minion is a thumb-sized ESP32-C6 board that joins the home Wi-Fi over Bluetooth pairing, then runs the same control loop on-device.
 
 <table>
   <tr>
@@ -141,10 +141,10 @@ For the majority of households that own a router but no server. The Minion is a 
   </tr>
 </table>
 
-- **Plug in** — Minion joins your Wi-Fi via Bluetooth pairing in the app. No re-cabling, no new SSID.
-- **Auto-discover** — Minion identifies every device on the network; label them to a kid once.
-- **Set a daily budget** — e.g. "Up to 2 hours per day on weekdays." That's the whole rule.
-- **Auto-block on overage** — When the budget is hit, the Minion pushes the kid's MACs into the router's filter list. The mobile app reflects state within ~2–12s. At midnight, the counter resets and the block lifts automatically.
+- **Plug in**: the Minion joins your Wi-Fi via Bluetooth pairing in the app. No re-cabling, no new SSID.
+- **Auto-discover**: the Minion identifies every device on the network; label them to a kid once.
+- **Set a daily budget**: e.g. "Up to 2 hours per day on weekdays." That's the whole rule.
+- **Auto-block on overage**: when the budget is hit, the Minion pushes the kid's MACs into the router's filter list. The mobile app reflects state within ~2–12s. At midnight, the counter resets and the block lifts automatically.
 
 ---
 
@@ -154,7 +154,7 @@ Both modes follow the same loop:
 
 1. **Discover** every client on the LAN through the router's admin API.
 2. **Poll** the router every ~60s and credit each tracked client's used-today counter.
-3. **Enforce** when a child crosses the budget by pushing their MACs into the router's MAC filter list — no client-side software, can't be bypassed by reinstalling.
+3. **Enforce** when a child crosses the budget by pushing their MACs into the router's MAC filter list: no client-side software, so a reinstall can't bypass it.
 4. **Reset** counters at midnight; auto-blocks lift on their own.
 
 **Network-layer enforcement** is the design choice that distinguishes this from screen-time apps. Block lists live in the router's filter, so a borrowed device or fresh OS install doesn't bypass the rule.
@@ -184,7 +184,7 @@ code/
 └── InternetConnectionControlMobile/         # Mode B — mobile companion app
 ```
 
-> The three product repos may be kept local-only or moved to private GitHub repos. This portfolio repo exists to present screenshots, the device photo, and the product story in one place.
+> The three product repos may be kept local-only or moved to private GitHub repos. This portfolio repo exists to present screenshots, the device photo, and a product overview in one place.
 
 ---
 
@@ -197,4 +197,4 @@ code/
 
 ## Status
 
-Working prototype across all three codebases. UI shown above is from the running web app and iOS app; the Minion photo is real hardware. This repo is the public landing page for the project — the three product codebases are kept private and referenced here via symlinks.
+Working prototype across all three codebases. UI shown above is from the running web app and iOS app; the Minion photo is real hardware. This repo is the public landing page for the project; the three product codebases are kept private (available on request) and referenced here via symlinks.
